@@ -139,7 +139,7 @@ out <- joined %>%
                   `TB CDR` = cdr,
                   `Confirmed cumulative incidence per 100,000` = round(cases / pop * 100000, digits = 2),
                   `Adjusted cumulative incidence per 100,000` = round(digits = 2)) %>%
-  dplyr::select(ISO, Region,`Confirmed cases`, `Adjusted cases`, `TB CDR`, `Confirmed cumulative incidence per 100,000`,`Adjusted cumulative incidence per 100,000`)
+  dplyr::select(ISO, Country = country, Region,`Confirmed cases`, `Adjusted cases`, `TB CDR`, `Confirmed cumulative incidence per 100,000`,`Adjusted cumulative incidence per 100,000`)
 write_csv(out, 'adjustments.csv')
 knitr::kable(out)
 ```
