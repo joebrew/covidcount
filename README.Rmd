@@ -128,11 +128,14 @@ ggplot(data = joined,
 
 ```{r}
 out <- joined %>%
+  left_join(world_pop %>% dplyr::select(iso, country)) %>%
+  filter(!is.na(country)) %>%
+  arrange(country) %>%
   mutate(adj = cases * (100/cdr)) %>%
     dplyr::mutate(ISO = iso, 
                   Region = region,
                   `Confirmed cases` = cases,
-                  `Adjusted cases` = adj,
+                  `Adjusted cases` = round(adj, digits = 1),
                   `TB CDR` = cdr,
                   `Confirmed cumulative incidence per 100,000` = round(cases / pop * 100000, digits = 2),
                   `Adjusted cumulative incidence per 100,000` = round(digits = 2)) %>%
