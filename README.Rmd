@@ -1,0 +1,142 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = NA, 
+               echo = TRUE, 
+               warning = FALSE, 
+               message = FALSE, 
+               error = TRUE, 
+               cache = FALSE,
+  fig.path = "figures/README-",
+  out.width = "100%"
+)
+```
+
+# Estimating COVID-19 underreporting using TB case detection rates
+
+Manuscript at: https://docs.google.com/document/d/1yC1M4ifLSp3XoLeWSoyNLABcUnuV9U-77NnFtzumdzQ/edit
+
+
+```{r}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(tidyr)
+library(cowplot)
+theme_set(theme_cowplot())
+options(scipen = '999')
+# Get WHO CDR data
+who <- read_csv('data/API_SH.TBS.DTEC.ZS_DS2_en_csv_v2_895250.csv', skip = 3) %>%
+  dplyr::select(country = `Country Name`, iso = `Country Code`, cdr = `2018`) %>%
+  filter(!is.na(cdr))
+
+# Get the pop data
+world_pop <- read_csv('data/world_pop.csv') %>% filter(!is.na(pop))
+
+# Get JHU COVID data
+jhu <- read_csv('data/jhu.csv')
+# Get most recent date
+most_recent <- jhu %>% filter(date >= (Sys.Date() - 7)) %>% group_by(country) %>% summarise(d = max(date)) %>%
+  ungroup %>% summarise(d = min(d)) %>% .$d
+covid <- jhu %>% filter(date == most_recent)
+
+# Join
+joined <- 
+  covid %>% dplyr::select(iso, deaths, cases) %>%
+  left_join(who %>% dplyr::select(iso, cdr)) %>%
+  left_join(world_pop %>% dplyr::select(iso, pop, region, sub_region)) %>%
+  filter(!is.na(region)) %>%
+  filter(region != 'Oceania') %>%
+  mutate(y = cases / pop * 100000)
+
+cols <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = 'Set1'))(length(unique(joined$region)))
+fit <- lm(log(y) ~ cdr, data = joined)
+ggplot(data = joined,
+       aes(x = cdr,
+           y = y)) +
+  # facet_wrap(~region, scales = 'free') +
+  scale_y_log10() +
+  # scale_x_log10() +
+  geom_jitter(aes(#color = region,
+                  pch = region),
+              size = 3,
+              width = 5,
+              height = 0.1,
+              alpha = 0.8) +
+  geom_smooth(#method = 'lm',
+              # aes(group = region,
+              #     color = region), 
+              color = 'black',
+              # formula = log(y) ~ x,
+              method = 'lm',#  'gam',
+              se = FALSE,
+              lty = 2) +
+  labs(x = 'TB case detection rate',
+       y = 'Confirmed COVID-19 cases per 100,000 population',
+       title = 'Association between TB Case detection rate and cumulative COVID-19 incidence') +
+  scale_color_manual(name = '',
+                     values = cols) +
+  scale_shape_manual(name = '',
+                     values = c(1,2, 5, 8)) +
+  theme(legend.position = 'top')# +
+  # stat_function(fun = function(x) predict(fit, newdata = data.frame(cdr=x)))
+
+```
+
+```{r}
+ggplot(data = joined,
+       aes(x = cdr,
+           y = y,
+           group = region)) +
+  facet_wrap(~region, scales = 'free') +
+  scale_y_log10() +
+  # scale_x_log10() +
+  geom_jitter(aes(#color = region,
+                  pch = region),
+              size = 3,
+              width = 5,
+              height = 0.1,
+              alpha = 0.8,
+              show.legend = FALSE) +
+  geom_smooth(#method = 'lm',
+              # aes(group = region,
+              #     color = region), 
+              color = 'black',
+              # formula = log(y) ~ x,
+              method = 'lm',#  'gam',
+              se = FALSE,
+              lty = 2) +
+  labs(x = 'TB case detection rate',
+       y = 'Confirmed COVID-19 cases per 100,000 population',
+       title = 'Association between TB Case detection rate and cumulative COVID-19 incidence') +
+  # scale_color_manual(name = '',
+  #                    values = cols) +
+  scale_shape_manual(name = '',
+                     values = c(1,2, 5, 8)) +
+  theme(legend.position = 'top')# +
+  # stat_function(fun = function(x) predict(fit, newdata = data.frame(cdr=x)))
+
+```
+
+# Make adjustment
+
+```{r}
+out <- joined %>%
+  mutate(adj = cases * (100/cdr)) %>%
+    dplyr::mutate(ISO = iso, 
+                  Region = region,
+                  `Confirmed cases` = cases,
+                  `Adjusted cases` = adj,
+                  `TB CDR` = cdr,
+                  `Confirmed cumulative incidence per 100,000` = round(cases / pop * 100000, digits = 2),
+                  `Adjusted cumulative incidence per 100,000` = round(digits = 2)) %>%
+  dplyr::select(ISO, Region,`Confirmed cases`, `Adjusted cases`, `TB CDR`, `Confirmed cumulative incidence per 100,000`,`Adjusted cumulative incidence per 100,000`)
+write_csv(out, 'adjustments.csv')
+knitr::kable(out)
+```
