@@ -141,5 +141,69 @@ out <- joined %>%
                   `Adjusted cumulative incidence per 100,000` = round(adj / pop * 100000,digits = 2)) %>%
   dplyr::select(ISO, Country = country, Region,`Confirmed cases`, `Adjusted cases`, `TB CDR`, `Confirmed cumulative incidence per 100,000`,`Adjusted cumulative incidence per 100,000`)
 write_csv(out, 'adjustments.csv')
+```
+
+```{r}
+# Plots on left connected to lines on right plot
+pd <- out %>%
+  dplyr::select(Country, Region,
+                `Confirmed cumulative incidence per 100,000`,
+                `Adjusted cumulative incidence per 100,000`) %>%
+  # Identify those with severe underestiamtes for labeling
+  # mutate(severe = T) %>%
+  filter(!Country %in% 'San Marino') %>%
+  mutate(severe =
+           (`Adjusted cumulative incidence per 100,000` >
+              (1.5 * `Confirmed cumulative incidence per 100,000`)) &
+           (`Adjusted cumulative incidence per 100,000` >=0)) %>%
+  gather(key, value, `Confirmed cumulative incidence per 100,000`:`Adjusted cumulative incidence per 100,000`) %>%
+  group_by(Country) %>%
+  mutate(keep = n()) %>%
+  ungroup %>%
+  filter(keep == 2)
+pd$key <- factor(pd$key,
+                 levels = c('Confirmed cumulative incidence per 100,000',
+                            'Adjusted cumulative incidence per 100,000'),
+                 labels = c('Confirmed',
+                            'Adjusted'))
+
+# cols <- rainbow(length(unique(pd$Country)))
+cols <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = 'Set1'))(length(unique(pd$Country)))
+cols <- sample(cols, length(cols))
+library(ggrepel)
+ggplot(data = pd,
+        aes(x = key,
+            y = value,
+            group = Country,
+            color = Country)) +
+  geom_point(data = pd %>% filter(!severe), show.legend = FALSE, size = 0.8, alpha = 0.3) +
+  geom_point(data = pd %>% filter(severe), show.legend = FALSE, size = 2, alpha = 1) +
+  geom_line(data = pd %>% filter(!severe), alpha = 0.3) +
+  geom_line(data = pd %>% filter(severe), alpha = 1) +
+  scale_y_log10() +
+  # facet_wrap(~Region,
+  #            scales = 'free_y') +
+  labs(x = '',
+       y = 'Cumulative incidence per 100,000') +
+  scale_color_manual(name = '', values = cols) +
+  ggrepel::geom_text_repel(data = pd %>% filter(severe,
+                                                 key == 'Confirmed'), 
+                            aes(label = Country),
+                            show.legend = FALSE,
+            nudge_x = -1,
+            hjust = 1,
+            size = 2.5,
+            segment.alpha = 0.6,
+            # arrow = arrow(length = unit(0.02, "npc")),
+            min.segment.length = 0) +
+  theme(legend.position = 'none') 
+ggsave('fig_lines.png',
+       height = 11,
+       width = 8)
+```
+
+
+```{r}
 knitr::kable(out)
 ```
+
