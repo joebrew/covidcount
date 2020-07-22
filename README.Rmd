@@ -1,5 +1,8 @@
 ---
-output: github_document
+output:
+  github_document:
+    fig_width: 8
+    fig_height: 5
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
@@ -13,6 +16,8 @@ knitr::opts_chunk$set(
                message = FALSE, 
                error = TRUE, 
                cache = FALSE,
+  fig.width = 7,
+  fig.height = 5,
   fig.path = "figures/README-",
   out.width = "100%"
 )
@@ -86,7 +91,9 @@ ggplot(data = joined,
                      values = c(1,2, 5, 8)) +
   theme(legend.position = 'top')# +
   # stat_function(fun = function(x) predict(fit, newdata = data.frame(cdr=x)))
-
+ggsave('fig1.png',
+       width = 11,
+       height = 6)
 ```
 
 ```{r}
@@ -121,7 +128,9 @@ ggplot(data = joined,
                      values = c(1,2, 5, 8)) +
   theme(legend.position = 'top')# +
   # stat_function(fun = function(x) predict(fit, newdata = data.frame(cdr=x)))
-
+ggsave('fig2.png',
+       width = 11,
+       height = 6)
 ```
 
 # Make adjustment
@@ -143,7 +152,7 @@ out <- joined %>%
 write_csv(out, 'adjustments.csv')
 ```
 
-```{r}
+```{r, fig.height = 9}
 # Plots on left connected to lines on right plot
 pd <- out %>%
   dplyr::select(Country, Region,
@@ -184,7 +193,8 @@ ggplot(data = pd,
   # facet_wrap(~Region,
   #            scales = 'free_y') +
   labs(x = '',
-       y = 'Cumulative incidence per 100,000') +
+       y = 'Cumulative incidence per 100,000',
+       title = 'Confirmed vs. adjusted COVID-19 cumulative incidence') +
   scale_color_manual(name = '', values = cols) +
   ggrepel::geom_text_repel(data = pd %>% filter(severe,
                                                  key == 'Confirmed'), 
@@ -197,7 +207,7 @@ ggplot(data = pd,
             # arrow = arrow(length = unit(0.02, "npc")),
             min.segment.length = 0) +
   theme(legend.position = 'none') 
-ggsave('fig_lines.png',
+ggsave('fig3.png',
        height = 11,
        width = 8)
 ```

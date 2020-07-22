@@ -74,6 +74,9 @@ ggplot(data = joined,
 
 ``` r
   # stat_function(fun = function(x) predict(fit, newdata = data.frame(cdr=x)))
+ggsave('fig1.png',
+       width = 11,
+       height = 6)
 ```
 
 ``` r
@@ -113,6 +116,9 @@ ggplot(data = joined,
 
 ``` r
   # stat_function(fun = function(x) predict(fit, newdata = data.frame(cdr=x)))
+ggsave('fig2.png',
+       width = 11,
+       height = 6)
 ```
 
 # Make adjustment
@@ -132,180 +138,252 @@ out <- joined %>%
                   `Adjusted cumulative incidence per 100,000` = round(adj / pop * 100000,digits = 2)) %>%
   dplyr::select(ISO, Country = country, Region,`Confirmed cases`, `Adjusted cases`, `TB CDR`, `Confirmed cumulative incidence per 100,000`,`Adjusted cumulative incidence per 100,000`)
 write_csv(out, 'adjustments.csv')
+```
+
+``` r
+# Plots on left connected to lines on right plot
+pd <- out %>%
+  dplyr::select(Country, Region,
+                `Confirmed cumulative incidence per 100,000`,
+                `Adjusted cumulative incidence per 100,000`) %>%
+  # Identify those with severe underestiamtes for labeling
+  # mutate(severe = T) %>%
+  filter(!Country %in% 'San Marino') %>%
+  mutate(severe =
+           (`Adjusted cumulative incidence per 100,000` >
+              (1.5 * `Confirmed cumulative incidence per 100,000`)) &
+           (`Adjusted cumulative incidence per 100,000` >=0)) %>%
+  gather(key, value, `Confirmed cumulative incidence per 100,000`:`Adjusted cumulative incidence per 100,000`) %>%
+  group_by(Country) %>%
+  mutate(keep = n()) %>%
+  ungroup %>%
+  filter(keep == 2)
+pd$key <- factor(pd$key,
+                 levels = c('Confirmed cumulative incidence per 100,000',
+                            'Adjusted cumulative incidence per 100,000'),
+                 labels = c('Confirmed',
+                            'Adjusted'))
+
+# cols <- rainbow(length(unique(pd$Country)))
+cols <- colorRampPalette(RColorBrewer::brewer.pal(n = 8, name = 'Set1'))(length(unique(pd$Country)))
+cols <- sample(cols, length(cols))
+library(ggrepel)
+ggplot(data = pd,
+        aes(x = key,
+            y = value,
+            group = Country,
+            color = Country)) +
+  geom_point(data = pd %>% filter(!severe), show.legend = FALSE, size = 0.8, alpha = 0.3) +
+  geom_point(data = pd %>% filter(severe), show.legend = FALSE, size = 2, alpha = 1) +
+  geom_line(data = pd %>% filter(!severe), alpha = 0.3) +
+  geom_line(data = pd %>% filter(severe), alpha = 1) +
+  scale_y_log10() +
+  # facet_wrap(~Region,
+  #            scales = 'free_y') +
+  labs(x = '',
+       y = 'Cumulative incidence per 100,000',
+       title = 'Confirmed vs. adjusted COVID-19 cumulative incidence') +
+  scale_color_manual(name = '', values = cols) +
+  ggrepel::geom_text_repel(data = pd %>% filter(severe,
+                                                 key == 'Confirmed'), 
+                            aes(label = Country),
+                            show.legend = FALSE,
+            nudge_x = -1,
+            hjust = 1,
+            size = 2.5,
+            segment.alpha = 0.6,
+            # arrow = arrow(length = unit(0.02, "npc")),
+            min.segment.length = 0) +
+  theme(legend.position = 'none') 
+```
+
+<img src="figures/README-unnamed-chunk-5-1.png" width="100%" />
+
+``` r
+ggsave('fig3.png',
+       height = 11,
+       width = 8)
+```
+
+``` r
 knitr::kable(out)
 ```
 
 | ISO | Country                        | Region   | Confirmed cases | Adjusted cases | TB CDR | Confirmed cumulative incidence per 100,000 | Adjusted cumulative incidence per 100,000 |
 | :-- | :----------------------------- | :------- | --------------: | -------------: | -----: | -----------------------------------------: | ----------------------------------------: |
-| AFG | Afghanistan                    | Asia     |             367 |          531.9 |     69 |                                       0.99 |                                      1.43 |
-| ALB | Albania                        | Europe   |             377 |          433.3 |     87 |                                      13.15 |                                     15.12 |
-| DZA | Algeria                        | Africa   |            1423 |         1778.8 |     80 |                                       3.37 |                                      4.21 |
-| AND | Andorra                        | Europe   |             525 |          603.4 |     87 |                                     681.77 |                                    783.64 |
-| AGO | Angola                         | Africa   |              16 |           26.2 |     61 |                                       0.05 |                                      0.09 |
-| ATG | Antigua and Barbuda            | Americas |              15 |           17.2 |     87 |                                      15.58 |                                     17.91 |
-| ARG | Argentina                      | Americas |            1554 |         1786.2 |     87 |                                       3.49 |                                      4.01 |
-| ARM | Armenia                        | Asia     |             833 |         1041.2 |     80 |                                      28.22 |                                     35.28 |
-| AUT | Austria                        | Europe   |           12297 |        16617.6 |     74 |                                     139.00 |                                    187.83 |
-| AZE | Azerbaijan                     | Asia     |             641 |          801.2 |     80 |                                       6.45 |                                      8.06 |
-| BHS | Bahamas, The                   | Americas |              29 |           33.3 |     87 |                                       7.52 |                                      8.64 |
-| BHR | Bahrain                        | Asia     |             756 |          869.0 |     87 |                                      48.17 |                                     55.37 |
-| BGD | Bangladesh                     | Asia     |             123 |          164.0 |     75 |                                       0.08 |                                      0.10 |
-| BRB | Barbados                       | Americas |              60 |           69.0 |     87 |                                      20.93 |                                     24.06 |
-| BLR | Belarus                        | Europe   |             700 |          875.0 |     80 |                                       7.38 |                                      9.22 |
-| BEL | Belgium                        | Europe   |           20814 |        23652.3 |     88 |                                     182.23 |                                    207.08 |
-| BLZ | Belize                         | Americas |               7 |            8.0 |     87 |                                       1.83 |                                      2.10 |
-| BEN | Benin                          | Africa   |              26 |           41.9 |     62 |                                       0.23 |                                      0.37 |
-| BTN | Bhutan                         | Asia     |               5 |            6.2 |     80 |                                       0.66 |                                      0.83 |
-| BOL | Bolivia                        | Americas |             183 |          295.2 |     62 |                                       1.61 |                                      2.60 |
-| BIH | Bosnia and Herzegovina         | Europe   |             674 |          842.5 |     80 |                                      20.28 |                                     25.35 |
-| BWA | Botswana                       | Africa   |               6 |           10.2 |     59 |                                       0.27 |                                      0.45 |
-| BRA | Brazil                         | Americas |           12161 |        13978.2 |     87 |                                       5.81 |                                      6.67 |
-| BRN | Brunei Darussalam              | Asia     |             135 |          155.2 |     87 |                                      31.47 |                                     36.17 |
-| BGR | Bulgaria                       | Europe   |             549 |          669.5 |     82 |                                       7.82 |                                      9.53 |
-| BFA | Burkina Faso                   | Africa   |             364 |          577.8 |     63 |                                       1.84 |                                      2.93 |
-| BDI | Burundi                        | Africa   |               3 |            5.2 |     58 |                                       0.03 |                                      0.05 |
-| CPV | Cabo Verde                     | Africa   |               7 |            8.8 |     80 |                                       1.29 |                                      1.61 |
-| KHM | Cambodia                       | Asia     |             114 |          196.6 |     58 |                                       0.70 |                                      1.21 |
-| CMR | Cameroon                       | Africa   |             658 |         1316.0 |     50 |                                       2.61 |                                      5.22 |
-| CAN | Canada                         | Americas |           16563 |        19037.9 |     87 |                                      44.69 |                                     51.37 |
-| CAF | Central African Republic       | Africa   |               8 |           18.6 |     43 |                                       0.17 |                                      0.40 |
-| TCD | Chad                           | Africa   |               9 |           15.3 |     59 |                                       0.06 |                                      0.10 |
-| CHL | Chile                          | Americas |            4815 |         5534.5 |     87 |                                      25.71 |                                     29.55 |
-| CHN | China                          | Asia     |           82665 |        89853.3 |     92 |                                       5.94 |                                      6.45 |
-| COL | Colombia                       | Americas |            1579 |         1973.8 |     80 |                                       3.18 |                                      3.98 |
-| COD | Congo, Dem. Rep.               | Africa   |             161 |          255.6 |     63 |                                       0.19 |                                      0.30 |
-| COG | Congo, Rep.                    | Africa   |              45 |           83.3 |     54 |                                       0.86 |                                      1.59 |
-| CRI | Costa Rica                     | Americas |             467 |          583.8 |     80 |                                       9.34 |                                     11.68 |
-| CIV | Cote d’Ivoire                  | Africa   |             323 |          547.5 |     59 |                                       1.29 |                                      2.18 |
-| HRV | Croatia                        | Europe   |            1222 |         1222.0 |    100 |                                      29.88 |                                     29.88 |
-| CUB | Cuba                           | Americas |             350 |          402.3 |     87 |                                       3.09 |                                      3.55 |
-| CYP | Cyprus                         | Asia     |             465 |          588.6 |     79 |                                      39.10 |                                     49.49 |
-| CZE | Czech Republic                 | Europe   |            4822 |         6429.3 |     75 |                                      45.38 |                                     60.51 |
-| DNK | Denmark                        | Europe   |            4875 |         5603.4 |     87 |                                      84.09 |                                     96.65 |
-| DJI | Djibouti                       | Africa   |              90 |          112.5 |     80 |                                       9.39 |                                     11.73 |
-| DMA | Dominica                       | Americas |              15 |           17.2 |     87 |                                      20.94 |                                     24.07 |
-| DOM | Dominican Republic             | Americas |            1828 |         2285.0 |     80 |                                      17.20 |                                     21.50 |
-| ECU | Ecuador                        | Americas |            3747 |         4683.8 |     80 |                                      21.93 |                                     27.42 |
-| EGY | Egypt, Arab Rep.               | Africa   |            1322 |         1944.1 |     68 |                                       1.34 |                                      1.98 |
-| SLV | El Salvador                    | Americas |              69 |           86.2 |     80 |                                       1.07 |                                      1.34 |
-| GNQ | Equatorial Guinea              | Africa   |              16 |           32.0 |     50 |                                       1.22 |                                      2.44 |
-| EST | Estonia                        | Europe   |            1108 |         1273.6 |     87 |                                      83.88 |                                     96.42 |
-| ETH | Ethiopia                       | Africa   |              44 |           63.8 |     69 |                                       0.04 |                                      0.06 |
-| FIN | Finland                        | Europe   |            2176 |         2472.7 |     88 |                                      39.43 |                                     44.81 |
-| FRA | France                         | Europe   |           98963 |       119232.5 |     83 |                                     147.73 |                                    177.99 |
-| GAB | Gabon                          | Africa   |              24 |           47.1 |     51 |                                       1.13 |                                      2.22 |
-| GMB | Gambia, The                    | Africa   |               4 |            6.7 |     60 |                                       0.18 |                                      0.29 |
-| GEO | Georgia                        | Asia     |             188 |          257.5 |     73 |                                       5.04 |                                      6.90 |
-| DEU | Germany                        | Europe   |          103374 |       118820.7 |     87 |                                     124.66 |                                    143.28 |
-| GHA | Ghana                          | Africa   |             214 |          668.8 |     32 |                                       0.72 |                                      2.25 |
-| GRC | Greece                         | Europe   |            1755 |         2040.7 |     86 |                                      16.36 |                                     19.02 |
-| GRD | Grenada                        | Americas |              12 |           13.8 |     87 |                                      10.77 |                                     12.38 |
-| GTM | Guatemala                      | Americas |              70 |           87.5 |     80 |                                       0.41 |                                      0.51 |
-| GIN | Guinea                         | Africa   |             128 |          196.9 |     65 |                                       1.03 |                                      1.59 |
-| GNB | Guinea-Bissau                  | Africa   |              18 |           60.0 |     30 |                                       0.96 |                                      3.20 |
-| GUY | Guyana                         | Americas |              31 |           38.8 |     80 |                                       3.98 |                                      4.97 |
-| HTI | Haiti                          | Americas |              24 |           34.8 |     69 |                                       0.22 |                                      0.31 |
-| HND | Honduras                       | Americas |             298 |          372.5 |     80 |                                       3.11 |                                      3.89 |
-| HUN | Hungary                        | Europe   |             744 |          767.0 |     97 |                                       7.62 |                                      7.85 |
-| ISL | Iceland                        | Europe   |            1562 |         1795.4 |     87 |                                     441.77 |                                    507.79 |
-| IND | India                          | Asia     |            4778 |         6456.8 |     74 |                                       0.35 |                                      0.48 |
-| IDN | Indonesia                      | Asia     |            2491 |         3717.9 |     67 |                                       0.93 |                                      1.39 |
-| IRN | Iran, Islamic Rep.             | Asia     |           60500 |        75625.0 |     80 |                                      73.96 |                                     92.45 |
-| IRQ | Iraq                           | Asia     |            1031 |         2343.2 |     44 |                                       2.68 |                                      6.10 |
-| IRL | Ireland                        | Europe   |            5364 |         6165.5 |     87 |                                     110.52 |                                    127.03 |
-| ISR | Israel                         | Asia     |            8904 |        10234.5 |     87 |                                     100.23 |                                    115.20 |
-| ITA | Italy                          | Europe   |          132547 |       150621.6 |     88 |                                     219.34 |                                    249.24 |
-| JAM | Jamaica                        | Americas |              58 |           72.5 |     80 |                                       1.98 |                                      2.47 |
-| JPN | Japan                          | Asia     |            3654 |         4200.0 |     87 |                                       2.89 |                                      3.32 |
-| JOR | Jordan                         | Asia     |             349 |          436.2 |     80 |                                       3.51 |                                      4.38 |
-| KAZ | Kazakhstan                     | Asia     |             662 |          662.0 |    100 |                                       3.62 |                                      3.62 |
-| KEN | Kenya                          | Africa   |             158 |          250.8 |     63 |                                       0.31 |                                      0.49 |
-| KOR | Korea, Rep.                    | Asia     |           10284 |        10940.4 |     94 |                                      19.92 |                                     21.19 |
-| KWT | Kuwait                         | Asia     |             665 |          764.4 |     87 |                                      16.07 |                                     18.47 |
-| KGZ | Kyrgyz Republic                | Asia     |             216 |          248.3 |     87 |                                       3.42 |                                      3.93 |
-| LAO | Lao PDR                        | Asia     |              12 |           21.1 |     57 |                                       0.17 |                                      0.30 |
-| LVA | Latvia                         | Europe   |             542 |             NA |     NA |                                      28.13 |                                        NA |
-| LBN | Lebanon                        | Asia     |             541 |          621.8 |     87 |                                       7.90 |                                      9.08 |
-| LBR | Liberia                        | Africa   |              14 |           26.4 |     53 |                                       0.29 |                                      0.55 |
-| LBY | Libya                          | Africa   |              19 |           27.9 |     68 |                                       0.28 |                                      0.42 |
-| LIE | Liechtenstein                  | Europe   |              77 |             NA |     NA |                                     203.11 |                                        NA |
-| LTU | Lithuania                      | Europe   |             843 |          969.0 |     87 |                                      30.22 |                                     34.74 |
-| LUX | Luxembourg                     | Europe   |            2843 |         3267.8 |     87 |                                     467.81 |                                    537.71 |
-| MDG | Madagascar                     | Africa   |              82 |          149.1 |     55 |                                       0.31 |                                      0.57 |
-| MWI | Malawi                         | Africa   |               5 |           10.4 |     48 |                                       0.03 |                                      0.06 |
-| MYS | Malaysia                       | Asia     |            3793 |         4359.8 |     87 |                                      12.03 |                                     13.83 |
-| MDV | Maldives                       | Asia     |              19 |           23.8 |     80 |                                       3.68 |                                      4.61 |
-| MLI | Mali                           | Africa   |              47 |           69.1 |     68 |                                       0.25 |                                      0.36 |
-| MLT | Malta                          | Europe   |             241 |          262.0 |     92 |                                      49.84 |                                     54.18 |
-| MRT | Mauritania                     | Africa   |               6 |           10.2 |     59 |                                       0.14 |                                      0.23 |
-| MUS | Mauritius                      | Africa   |             244 |          305.0 |     80 |                                      19.28 |                                     24.10 |
-| MEX | Mexico                         | Americas |            2143 |         2678.8 |     80 |                                       1.70 |                                      2.12 |
-| MDA | Moldova                        | Europe   |             965 |         1109.2 |     87 |                                      27.21 |                                     31.28 |
-| MCO | Monaco                         | Europe   |              77 |             NA |     NA |                                     199.06 |                                        NA |
-| MNG | Mongolia                       | Asia     |              15 |           51.7 |     29 |                                       0.47 |                                      1.63 |
-| MNE | Montenegro                     | Europe   |             233 |          267.8 |     87 |                                      37.44 |                                     43.03 |
-| MAR | Morocco                        | Africa   |            1120 |         1287.4 |     87 |                                       3.11 |                                      3.57 |
-| MOZ | Mozambique                     | Africa   |              10 |           17.5 |     57 |                                       0.03 |                                      0.06 |
-| MMR | Myanmar                        | Asia     |              22 |           28.9 |     76 |                                       0.04 |                                      0.05 |
-| NAM | Namibia                        | Africa   |              16 |           26.2 |     61 |                                       0.65 |                                      1.07 |
-| NPL | Nepal                          | Asia     |               9 |           12.0 |     75 |                                       0.03 |                                      0.04 |
-| NLD | Netherlands                    | Europe   |           18926 |        21754.0 |     87 |                                     109.84 |                                    126.25 |
-| NIC | Nicaragua                      | Americas |               6 |            7.5 |     80 |                                       0.09 |                                      0.12 |
-| NER | Niger                          | Africa   |             253 |          460.0 |     55 |                                       1.13 |                                      2.05 |
-| NGA | Nigeria                        | Africa   |             238 |          991.7 |     24 |                                       0.12 |                                      0.51 |
-| MKD | North Macedonia                | Europe   |             570 |          712.5 |     80 |                                      27.36 |                                     34.21 |
-| NOR | Norway                         | Europe   |            5865 |         6741.4 |     87 |                                     110.36 |                                    126.85 |
-| OMN | Oman                           | Asia     |             331 |          380.5 |     87 |                                       6.85 |                                      7.88 |
-| PAK | Pakistan                       | Asia     |            3766 |         5884.4 |     64 |                                       1.77 |                                      2.77 |
-| PAN | Panama                         | Americas |            1988 |         2485.0 |     80 |                                      47.60 |                                     59.49 |
-| PRY | Paraguay                       | Americas |             113 |          129.9 |     87 |                                       1.62 |                                      1.87 |
-| PER | Peru                           | Americas |            2561 |         3201.2 |     80 |                                       8.01 |                                     10.01 |
-| PHL | Philippines                    | Asia     |            3660 |         5809.5 |     63 |                                       3.43 |                                      5.45 |
-| POL | Poland                         | Europe   |            4413 |         5072.4 |     87 |                                      11.62 |                                     13.36 |
-| PRT | Portugal                       | Europe   |           11730 |        13482.8 |     87 |                                     114.09 |                                    131.13 |
-| QAT | Qatar                          | Asia     |            1832 |         2105.7 |     87 |                                      65.86 |                                     75.70 |
-| ROU | Romania                        | Europe   |            4057 |         4663.2 |     87 |                                      20.83 |                                     23.95 |
-| RUS | Russian Federation             | Europe   |            6343 |         6407.1 |     99 |                                       4.39 |                                      4.43 |
-| RWA | Rwanda                         | Africa   |             105 |          131.2 |     80 |                                       0.85 |                                      1.07 |
-| SMR | San Marino                     | Europe   |             266 |             NA |     NA |                                     787.33 |                                        NA |
-| STP | Sao Tome and Principe          | Africa   |               4 |            7.0 |     57 |                                       1.90 |                                      3.33 |
-| SAU | Saudi Arabia                   | Asia     |            2605 |         2994.3 |     87 |                                       7.73 |                                      8.89 |
-| SEN | Senegal                        | Africa   |             226 |          318.3 |     71 |                                       1.43 |                                      2.01 |
-| SRB | Serbia                         | Europe   |            2200 |         2528.7 |     87 |                                      31.51 |                                     36.22 |
-| SYC | Seychelles                     | Africa   |              11 |           12.6 |     87 |                                      11.37 |                                     13.07 |
-| SLE | Sierra Leone                   | Africa   |               6 |            8.0 |     75 |                                       0.08 |                                      0.10 |
-| SGP | Singapore                      | Asia     |            1375 |         1580.5 |     87 |                                      24.39 |                                     28.03 |
-| SVK | Slovak Republic                | Europe   |             534 |          613.8 |     87 |                                       9.80 |                                     11.27 |
-| SVN | Slovenia                       | Europe   |            1021 |         1147.2 |     89 |                                      49.39 |                                     55.49 |
-| SOM | Somalia                        | Africa   |               7 |           16.7 |     42 |                                       0.05 |                                      0.11 |
-| ZAF | South Africa                   | Africa   |            1686 |         2218.4 |     76 |                                       2.92 |                                      3.84 |
-| SSD | South Sudan                    | Africa   |               1 |            1.1 |     91 |                                       0.01 |                                      0.01 |
-| ESP | Spain                          | Europe   |          140511 |       140511.0 |    100 |                                     300.73 |                                    300.73 |
-| LKA | Sri Lanka                      | Asia     |             178 |          278.1 |     64 |                                       0.82 |                                      1.28 |
-| KNA | St. Kitts and Nevis            | Americas |              10 |             NA |     NA |                                      19.07 |                                        NA |
-| LCA | St. Lucia                      | Americas |              14 |           16.1 |     87 |                                       7.70 |                                      8.85 |
-| VCT | St. Vincent and the Grenadines | Americas |               7 |            8.0 |     87 |                                       6.35 |                                      7.30 |
-| SDN | Sudan                          | Africa   |              12 |           17.9 |     67 |                                       0.03 |                                      0.04 |
-| SUR | Suriname                       | Americas |              10 |           12.5 |     80 |                                       1.74 |                                      2.17 |
-| SWE | Sweden                         | Europe   |            7206 |         8282.8 |     87 |                                      70.76 |                                     81.34 |
-| CHE | Switzerland                    | Europe   |           21657 |        24893.1 |     87 |                                     254.29 |                                    292.29 |
-| SYR | Syrian Arab Republic           | Asia     |              19 |           23.8 |     80 |                                       0.11 |                                      0.14 |
-| TZA | Tanzania                       | Africa   |              24 |           45.3 |     53 |                                       0.04 |                                      0.08 |
-| THA | Thailand                       | Asia     |            2220 |         2775.0 |     80 |                                       3.20 |                                      4.00 |
-| TLS | Timor-Leste                    | Asia     |               1 |            1.7 |     60 |                                       0.08 |                                      0.13 |
-| TGO | Togo                           | Africa   |              58 |           68.2 |     85 |                                       0.74 |                                      0.86 |
-| TTO | Trinidad and Tobago            | Americas |             105 |          120.7 |     87 |                                       7.55 |                                      8.68 |
-| TUN | Tunisia                        | Africa   |             596 |          745.0 |     80 |                                       5.15 |                                      6.44 |
-| TUR | Turkey                         | Asia     |           30217 |        34732.2 |     87 |                                      36.71 |                                     42.19 |
-| UGA | Uganda                         | Africa   |              52 |           80.0 |     65 |                                       0.12 |                                      0.19 |
-| UKR | Ukraine                        | Europe   |            1319 |         1758.7 |     75 |                                       2.96 |                                      3.94 |
-| ARE | United Arab Emirates           | Asia     |            2076 |         2386.2 |     87 |                                      21.56 |                                     24.78 |
-| GBR | United Kingdom                 | Europe   |           52279 |        58740.4 |     89 |                                      78.63 |                                     88.35 |
-| USA | United States                  | Americas |          366614 |       421395.4 |     87 |                                     112.06 |                                    128.80 |
-| URY | Uruguay                        | Americas |             406 |          466.7 |     87 |                                      11.77 |                                     13.53 |
-| UZB | Uzbekistan                     | Asia     |             457 |          634.7 |     72 |                                       1.39 |                                      1.93 |
-| VEN | Venezuela, RB                  | Americas |             165 |          206.2 |     80 |                                       0.57 |                                      0.71 |
-| VNM | Vietnam                        | Asia     |             245 |          429.8 |     57 |                                       0.26 |                                      0.45 |
-| PSE | West Bank and Gaza             | Asia     |             254 |          317.5 |     80 |                                       5.56 |                                      6.95 |
-| ZMB | Zambia                         | Africa   |              39 |           67.2 |     58 |                                       0.22 |                                      0.39 |
-| ZWE | Zimbabwe                       | Africa   |              10 |           12.0 |     83 |                                       0.07 |                                      0.08 |
+| AFG | Afghanistan                    | Asia     |           35070 |        50826.1 |     69 |                                      94.34 |                                    136.73 |
+| ALB | Albania                        | Europe   |            3851 |         4426.4 |     87 |                                     134.35 |                                    154.43 |
+| DZA | Algeria                        | Africa   |           21355 |        26693.8 |     80 |                                      50.57 |                                     63.21 |
+| AND | Andorra                        | Europe   |             877 |         1008.0 |     87 |                                    1138.87 |                                   1309.05 |
+| AGO | Angola                         | Africa   |             607 |          995.1 |     61 |                                       1.97 |                                      3.23 |
+| ATG | Antigua and Barbuda            | Americas |              74 |           85.1 |     87 |                                      76.85 |                                     88.34 |
+| ARG | Argentina                      | Americas |          114783 |       131934.5 |     87 |                                     257.97 |                                    296.52 |
+| ARM | Armenia                        | Asia     |           33559 |        41948.8 |     80 |                                    1136.91 |                                   1421.14 |
+| AUT | Austria                        | Europe   |           19270 |        26040.5 |     74 |                                     217.81 |                                    294.34 |
+| AZE | Azerbaijan                     | Asia     |           26165 |        32706.2 |     80 |                                     263.17 |                                    328.96 |
+| BHS | Bahamas, The                   | Americas |             124 |          142.5 |     87 |                                      32.15 |                                     36.96 |
+| BHR | Bahrain                        | Asia     |           35084 |        40326.4 |     87 |                                    2235.45 |                                   2569.48 |
+| BGD | Bangladesh                     | Asia     |          196323 |       261764.0 |     75 |                                     121.67 |                                    162.23 |
+| BRB | Barbados                       | Americas |             104 |          119.5 |     87 |                                      36.28 |                                     41.70 |
+| BLR | Belarus                        | Europe   |           65623 |        82028.8 |     80 |                                     691.83 |                                    864.79 |
+| BEL | Belgium                        | Europe   |           63238 |        71861.4 |     88 |                                     553.65 |                                    629.14 |
+| BLZ | Belize                         | Americas |              40 |           46.0 |     87 |                                      10.44 |                                     12.00 |
+| BEN | Benin                          | Africa   |            1463 |         2359.7 |     62 |                                      12.74 |                                     20.55 |
+| BTN | Bhutan                         | Asia     |              86 |          107.5 |     80 |                                      11.40 |                                     14.25 |
+| BOL | Bolivia                        | Americas |           54156 |        87348.4 |     62 |                                     477.01 |                                    769.38 |
+| BIH | Bosnia and Herzegovina         | Europe   |            7681 |         9601.2 |     80 |                                     231.08 |                                    288.85 |
+| BWA | Botswana                       | Africa   |             522 |          884.7 |     59 |                                      23.16 |                                     39.25 |
+| BRA | Brazil                         | Americas |         2012151 |      2312817.2 |     87 |                                     960.59 |                                   1104.13 |
+| BRN | Brunei Darussalam              | Asia     |             141 |          162.1 |     87 |                                      32.87 |                                     37.78 |
+| BGR | Bulgaria                       | Europe   |            8144 |         9931.7 |     82 |                                     115.94 |                                    141.39 |
+| BFA | Burkina Faso                   | Africa   |            1038 |         1647.6 |     63 |                                       5.26 |                                      8.34 |
+| BDI | Burundi                        | Africa   |             303 |          522.4 |     58 |                                       2.71 |                                      4.67 |
+| CPV | Cabo Verde                     | Africa   |            1894 |         2367.5 |     80 |                                     348.31 |                                    435.39 |
+| KHM | Cambodia                       | Asia     |             171 |          294.8 |     58 |                                       1.05 |                                      1.81 |
+| CMR | Cameroon                       | Africa   |           16157 |        32314.0 |     50 |                                      64.07 |                                    128.15 |
+| CAN | Canada                         | Americas |          111144 |       127751.7 |     87 |                                     299.91 |                                    344.73 |
+| CAF | Central African Republic       | Africa   |            4373 |        10169.8 |     43 |                                      93.71 |                                    217.94 |
+| TCD | Chad                           | Africa   |             886 |         1501.7 |     59 |                                       5.72 |                                      9.70 |
+| CHL | Chile                          | Americas |          323698 |       372066.7 |     87 |                                    1728.31 |                                   1986.56 |
+| CHN | China                          | Asia     |           85314 |        92732.6 |     92 |                                       6.13 |                                      6.66 |
+| COL | Colombia                       | Americas |          165169 |       206461.2 |     80 |                                     332.68 |                                    415.84 |
+| COM | Comoros                        | Africa   |             328 |             NA |     NA |                                      39.41 |                                        NA |
+| COD | Congo, Dem. Rep.               | Africa   |            8199 |        13014.3 |     63 |                                       9.75 |                                     15.48 |
+| COG | Congo, Rep.                    | Africa   |            2358 |         4366.7 |     54 |                                      44.96 |                                     83.26 |
+| CRI | Costa Rica                     | Americas |            9546 |        11932.5 |     80 |                                     190.94 |                                    238.68 |
+| CIV | Cote d’Ivoire                  | Africa   |           13554 |        22972.9 |     59 |                                      54.07 |                                     91.64 |
+| HRV | Croatia                        | Europe   |            4039 |         4039.0 |    100 |                                      98.77 |                                     98.77 |
+| CUB | Cuba                           | Americas |            2440 |         2804.6 |     87 |                                      21.52 |                                     24.74 |
+| CYP | Cyprus                         | Asia     |            1031 |         1305.1 |     79 |                                      86.69 |                                    109.74 |
+| CZE | Czech Republic                 | Europe   |           13612 |        18149.3 |     75 |                                     128.10 |                                    170.81 |
+| DNK | Denmark                        | Europe   |           13325 |        15316.1 |     87 |                                     229.84 |                                    264.19 |
+| DJI | Djibouti                       | Africa   |            4993 |         6241.2 |     80 |                                     520.69 |                                    650.86 |
+| DMA | Dominica                       | Americas |              18 |           20.7 |     87 |                                      25.13 |                                     28.89 |
+| DOM | Dominican Republic             | Americas |           48743 |        60928.8 |     80 |                                     458.66 |                                    573.33 |
+| ECU | Ecuador                        | Americas |           71365 |        89206.2 |     80 |                                     417.72 |                                    522.15 |
+| EGY | Egypt, Arab Rep.               | Africa   |           85771 |       126133.8 |     68 |                                      87.14 |                                    128.15 |
+| SLV | El Salvador                    | Americas |           10957 |        13696.2 |     80 |                                     170.65 |                                    213.31 |
+| GNQ | Equatorial Guinea              | Africa   |            3071 |         6142.0 |     50 |                                     234.61 |                                    469.22 |
+| EST | Estonia                        | Europe   |            2016 |         2317.2 |     87 |                                     152.63 |                                    175.43 |
+| ETH | Ethiopia                       | Africa   |            8475 |        12282.6 |     69 |                                       7.76 |                                     11.25 |
+| FIN | Finland                        | Europe   |            7293 |         8287.5 |     88 |                                     132.17 |                                    150.19 |
+| FRA | France                         | Europe   |          211102 |       254339.8 |     83 |                                     315.14 |                                    379.68 |
+| GAB | Gabon                          | Africa   |            6121 |        12002.0 |     51 |                                     288.83 |                                    566.32 |
+| GMB | Gambia, The                    | Africa   |              78 |          130.0 |     60 |                                       3.42 |                                      5.70 |
+| GEO | Georgia                        | Asia     |            1006 |         1378.1 |     73 |                                      26.96 |                                     36.94 |
+| DEU | Germany                        | Europe   |          201450 |       231551.7 |     87 |                                     242.92 |                                    279.22 |
+| GHA | Ghana                          | Africa   |           26125 |        81640.6 |     32 |                                      87.76 |                                    274.26 |
+| GRC | Greece                         | Europe   |            3939 |         4580.2 |     86 |                                      36.72 |                                     42.70 |
+| GRD | Grenada                        | Americas |              23 |           26.4 |     87 |                                      20.64 |                                     23.72 |
+| GTM | Guatemala                      | Americas |           32939 |        41173.8 |     80 |                                     190.98 |                                    238.72 |
+| GIN | Guinea                         | Africa   |            6359 |         9783.1 |     65 |                                      51.22 |                                     78.80 |
+| GNB | Guinea-Bissau                  | Africa   |            1902 |         6340.0 |     30 |                                     101.48 |                                    338.26 |
+| GUY | Guyana                         | Americas |             315 |          393.8 |     80 |                                      40.44 |                                     50.55 |
+| HTI | Haiti                          | Americas |            6948 |        10069.6 |     69 |                                      62.46 |                                     90.53 |
+| HND | Honduras                       | Americas |           30867 |        38583.8 |     80 |                                     321.95 |                                    402.44 |
+| HUN | Hungary                        | Europe   |            4279 |         4411.3 |     97 |                                      43.80 |                                     45.16 |
+| ISL | Iceland                        | Europe   |            1914 |         2200.0 |     87 |                                     541.33 |                                    622.22 |
+| IND | India                          | Asia     |         1003832 |      1356529.7 |     74 |                                      74.21 |                                    100.29 |
+| IDN | Indonesia                      | Asia     |           81668 |       121892.5 |     67 |                                      30.51 |                                     45.54 |
+| IRN | Iran, Islamic Rep.             | Asia     |          267061 |       333826.2 |     80 |                                     326.48 |                                    408.10 |
+| IRQ | Iraq                           | Asia     |           86148 |       195790.9 |     44 |                                     224.15 |                                    509.43 |
+| IRL | Ireland                        | Europe   |           25698 |        29537.9 |     87 |                                     529.47 |                                    608.59 |
+| ISR | Israel                         | Asia     |           46059 |        52941.4 |     87 |                                     518.46 |                                    595.93 |
+| ITA | Italy                          | Europe   |          243736 |       276972.7 |     88 |                                     403.33 |                                    458.33 |
+| JAM | Jamaica                        | Americas |             765 |          956.2 |     80 |                                      26.07 |                                     32.58 |
+| JPN | Japan                          | Asia     |           23510 |        27023.0 |     87 |                                      18.58 |                                     21.36 |
+| JOR | Jordan                         | Asia     |            1206 |         1507.5 |     80 |                                      12.11 |                                     15.14 |
+| KAZ | Kazakhstan                     | Asia     |           66895 |        66895.0 |    100 |                                     366.02 |                                    366.02 |
+| KEN | Kenya                          | Africa   |           11673 |        18528.6 |     63 |                                      22.71 |                                     36.05 |
+| KOR | Korea, Rep.                    | Asia     |           13672 |        14544.7 |     94 |                                      26.48 |                                     28.17 |
+| KWT | Kuwait                         | Asia     |           57668 |        66285.1 |     87 |                                    1393.85 |                                   1602.13 |
+| KGZ | Kyrgyz Republic                | Asia     |           12498 |        14365.5 |     87 |                                     197.88 |                                    227.45 |
+| LAO | Lao PDR                        | Asia     |              19 |           33.3 |     57 |                                       0.27 |                                      0.47 |
+| LVA | Latvia                         | Europe   |            1179 |             NA |     NA |                                      61.20 |                                        NA |
+| LBN | Lebanon                        | Asia     |            2599 |         2987.4 |     87 |                                      37.95 |                                     43.62 |
+| LSO | Lesotho                        | Africa   |             256 |          465.5 |     55 |                                      12.14 |                                     22.08 |
+| LBR | Liberia                        | Africa   |            1070 |         2018.9 |     53 |                                      22.20 |                                     41.89 |
+| LBY | Libya                          | Africa   |            1652 |         2429.4 |     68 |                                      24.74 |                                     36.38 |
+| LIE | Liechtenstein                  | Europe   |              84 |             NA |     NA |                                     221.58 |                                        NA |
+| LTU | Lithuania                      | Europe   |            1902 |         2186.2 |     87 |                                      68.18 |                                     78.37 |
+| LUX | Luxembourg                     | Europe   |            5285 |         6074.7 |     87 |                                     869.63 |                                    999.58 |
+| MDG | Madagascar                     | Africa   |            6089 |        11070.9 |     55 |                                      23.19 |                                     42.16 |
+| MWI | Malawi                         | Africa   |            2712 |         5650.0 |     48 |                                      14.95 |                                     31.14 |
+| MYS | Malaysia                       | Asia     |            8737 |        10042.5 |     87 |                                      27.71 |                                     31.85 |
+| MDV | Maldives                       | Asia     |            2899 |         3623.8 |     80 |                                     562.15 |                                    702.69 |
+| MLI | Mali                           | Africa   |            2440 |         3588.2 |     68 |                                      12.79 |                                     18.81 |
+| MLT | Malta                          | Europe   |             674 |          732.6 |     92 |                                     139.39 |                                    151.51 |
+| MRT | Mauritania                     | Africa   |            5659 |         9591.5 |     59 |                                     128.52 |                                    217.82 |
+| MUS | Mauritius                      | Africa   |             343 |          428.8 |     80 |                                      27.11 |                                     33.89 |
+| MEX | Mexico                         | Americas |          324041 |       405051.2 |     80 |                                     256.79 |                                    320.98 |
+| MDA | Moldova                        | Europe   |           20264 |        23292.0 |     87 |                                     571.48 |                                    656.87 |
+| MCO | Monaco                         | Europe   |             109 |             NA |     NA |                                     281.78 |                                        NA |
+| MNG | Mongolia                       | Asia     |             262 |          903.4 |     29 |                                       8.26 |                                     28.50 |
+| MNE | Montenegro                     | Europe   |            1287 |         1479.3 |     87 |                                     206.80 |                                    237.70 |
+| MAR | Morocco                        | Africa   |           16545 |        19017.2 |     87 |                                      45.92 |                                     52.78 |
+| MOZ | Mozambique                     | Africa   |            1383 |         2426.3 |     57 |                                       4.69 |                                      8.23 |
+| MMR | Myanmar                        | Asia     |             339 |          446.1 |     76 |                                       0.63 |                                      0.83 |
+| NAM | Namibia                        | Africa   |            1032 |         1691.8 |     61 |                                      42.15 |                                     69.10 |
+| NPL | Nepal                          | Asia     |           17344 |        23125.3 |     75 |                                      61.75 |                                     82.33 |
+| NLD | Netherlands                    | Europe   |           51572 |        59278.2 |     87 |                                     299.30 |                                    344.02 |
+| NIC | Nicaragua                      | Americas |            3147 |         3933.8 |     80 |                                      48.67 |                                     60.84 |
+| NER | Niger                          | Africa   |            1102 |         2003.6 |     55 |                                       4.91 |                                      8.93 |
+| NGA | Nigeria                        | Africa   |           34854 |       145225.0 |     24 |                                      17.79 |                                     74.14 |
+| MKD | North Macedonia                | Europe   |            8623 |        10778.8 |     80 |                                     413.98 |                                    517.47 |
+| NOR | Norway                         | Europe   |            9015 |        10362.1 |     87 |                                     169.64 |                                    194.98 |
+| OMN | Oman                           | Asia     |           62574 |        71924.1 |     87 |                                    1295.67 |                                   1489.27 |
+| PAK | Pakistan                       | Asia     |          257914 |       402990.6 |     64 |                                     121.53 |                                    189.90 |
+| PAN | Panama                         | Americas |           50373 |        62966.2 |     80 |                                    1206.00 |                                   1507.50 |
+| PRY | Paraguay                       | Americas |            3342 |         3841.4 |     87 |                                      48.04 |                                     55.22 |
+| PER | Peru                           | Americas |          341586 |       426982.5 |     80 |                                    1067.81 |                                   1334.77 |
+| PHL | Philippines                    | Asia     |           61266 |        97247.6 |     63 |                                      57.44 |                                     91.18 |
+| POL | Poland                         | Europe   |           39054 |        44889.7 |     87 |                                     102.83 |                                    118.20 |
+| PRT | Portugal                       | Europe   |           47765 |        54902.3 |     87 |                                     464.56 |                                    533.98 |
+| QAT | Qatar                          | Asia     |          105477 |       121237.9 |     87 |                                    3791.85 |                                   4358.45 |
+| ROU | Romania                        | Europe   |           35003 |        40233.3 |     87 |                                     179.74 |                                    206.60 |
+| RUS | Russian Federation             | Europe   |          751612 |       759204.0 |     99 |                                     520.23 |                                    525.48 |
+| RWA | Rwanda                         | Africa   |            1473 |         1841.2 |     80 |                                      11.97 |                                     14.97 |
+| SMR | San Marino                     | Europe   |             699 |             NA |     NA |                                    2068.97 |                                        NA |
+| STP | Sao Tome and Principe          | Africa   |             740 |         1298.2 |     57 |                                     350.66 |                                    615.20 |
+| SAU | Saudi Arabia                   | Asia     |          243238 |       279583.9 |     87 |                                     721.78 |                                    829.63 |
+| SEN | Senegal                        | Africa   |            8481 |        11945.1 |     71 |                                      53.49 |                                     75.34 |
+| SRB | Serbia                         | Europe   |           19717 |        22663.2 |     87 |                                     282.39 |                                    324.59 |
+| SYC | Seychelles                     | Africa   |             108 |          124.1 |     87 |                                     111.61 |                                    128.29 |
+| SLE | Sierra Leone                   | Africa   |            1678 |         2237.3 |     75 |                                      21.93 |                                     29.25 |
+| SGP | Singapore                      | Asia     |           47126 |        54167.8 |     87 |                                     835.76 |                                    960.65 |
+| SVK | Slovak Republic                | Europe   |            1951 |         2242.5 |     87 |                                      35.82 |                                     41.17 |
+| SVN | Slovenia                       | Europe   |            1897 |         2131.5 |     89 |                                      91.76 |                                    103.10 |
+| SOM | Somalia                        | Africa   |            3106 |         7395.2 |     42 |                                      20.70 |                                     49.27 |
+| ZAF | South Africa                   | Africa   |          324221 |       426606.6 |     76 |                                     561.13 |                                    738.33 |
+| SSD | South Sudan                    | Africa   |            2171 |         2385.7 |     91 |                                      19.78 |                                     21.74 |
+| ESP | Spain                          | Europe   |          281511 |       281511.0 |    100 |                                     602.50 |                                    602.50 |
+| LKA | Sri Lanka                      | Asia     |            2687 |         4198.4 |     64 |                                      12.40 |                                     19.37 |
+| KNA | St. Kitts and Nevis            | Americas |              17 |             NA |     NA |                                      32.42 |                                        NA |
+| LCA | St. Lucia                      | Americas |              23 |           26.4 |     87 |                                      12.65 |                                     14.53 |
+| VCT | St. Vincent and the Grenadines | Americas |              35 |           40.2 |     87 |                                      31.76 |                                     36.50 |
+| SDN | Sudan                          | Africa   |           10527 |        15711.9 |     67 |                                      25.18 |                                     37.59 |
+| SUR | Suriname                       | Americas |             904 |         1130.0 |     80 |                                     156.95 |                                    196.18 |
+| SWE | Sweden                         | Europe   |           76877 |        88364.4 |     87 |                                     754.94 |                                    867.75 |
+| CHE | Switzerland                    | Europe   |           33290 |        38264.4 |     87 |                                     390.89 |                                    449.29 |
+| SYR | Syrian Arab Republic           | Asia     |             477 |          596.2 |     80 |                                       2.82 |                                      3.53 |
+| TJK | Tajikistan                     | Asia     |            6741 |         8988.0 |     75 |                                      74.07 |                                     98.76 |
+| TZA | Tanzania                       | Africa   |             509 |          960.4 |     53 |                                       0.90 |                                      1.71 |
+| THA | Thailand                       | Asia     |            3236 |         4045.0 |     80 |                                       4.66 |                                      5.83 |
+| TLS | Timor-Leste                    | Asia     |              24 |           40.0 |     60 |                                       1.89 |                                      3.15 |
+| TGO | Togo                           | Africa   |             749 |          881.2 |     85 |                                       9.49 |                                     11.17 |
+| TTO | Trinidad and Tobago            | Americas |             133 |          152.9 |     87 |                                       9.57 |                                     11.00 |
+| TUN | Tunisia                        | Africa   |            1327 |         1658.8 |     80 |                                      11.47 |                                     14.34 |
+| TUR | Turkey                         | Asia     |          216873 |       249279.3 |     87 |                                     263.45 |                                    302.82 |
+| UGA | Uganda                         | Africa   |            1051 |         1616.9 |     65 |                                       2.46 |                                      3.78 |
+| UKR | Ukraine                        | Europe   |           57640 |        76853.3 |     75 |                                     129.17 |                                    172.23 |
+| ARE | United Arab Emirates           | Asia     |           56129 |        64516.1 |     87 |                                     582.80 |                                    669.88 |
+| GBR | United Kingdom                 | Europe   |          294116 |       330467.4 |     89 |                                     442.35 |                                    497.03 |
+| USA | United States                  | Americas |         3576157 |      4110525.3 |     87 |                                    1093.07 |                                   1256.40 |
+| URY | Uruguay                        | Americas |            1026 |         1179.3 |     87 |                                      29.75 |                                     34.19 |
+| UZB | Uzbekistan                     | Asia     |           15066 |        20925.0 |     72 |                                      45.72 |                                     63.49 |
+| VEN | Venezuela, RB                  | Americas |           10854 |        13567.5 |     80 |                                      37.60 |                                     46.99 |
+| VNM | Vietnam                        | Asia     |             381 |          668.4 |     57 |                                       0.40 |                                      0.70 |
+| PSE | West Bank and Gaza             | Asia     |            7412 |         9265.0 |     80 |                                     162.22 |                                    202.78 |
+| YEM | Yemen, Rep.                    | Asia     |            1552 |         2185.9 |     71 |                                       5.45 |                                      7.67 |
+| ZMB | Zambia                         | Africa   |            1895 |         3267.2 |     58 |                                      10.92 |                                     18.83 |
+| ZWE | Zimbabwe                       | Africa   |            1362 |         1641.0 |     83 |                                       9.43 |                                     11.36 |
